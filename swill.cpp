@@ -2,7 +2,10 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <vector>
+#include <queue>
 using namespace std;
+
 
 /*
  * Create a class to store individual process information
@@ -21,6 +24,13 @@ class Process {
 			priority = 0;
 			ageindex = 0;
 		}
+		Process(int p_id) {
+			pid = p_id;
+			burst = 0;
+			arrival = 0;
+			priority = 0;
+			ageindex = 0;
+		}
 		Process(int p_id, int burst_time, int arrival_time, int priority_num, int age_index) {
 			pid = p_id;
 			burst = burst_time;
@@ -31,8 +41,9 @@ class Process {
 	
 };
 
+
 /*
- * Main function
+ * Helper QuickSort function
  */
 int makeSplit(Process arr[], int start, int end) {
 
@@ -70,7 +81,7 @@ int makeSplit(Process arr[], int start, int end) {
 }
 
 /*
- * Main function
+ * Main QuickSort function
  */
 void quickSort(Process arr[], int start, int end) {
 
@@ -170,62 +181,27 @@ int main (int argc, char *argv[]) {
 	}
 */
 
-	//Create the priority queue
-/*
-	//create the nodes
-	class node {
-		public:
-			Process body; //the process in this node
-			Process previous = NULL; //the process in the node after it
-			
-			Process getPrevious(void) {
-				return previous;
-			}
-			
-			void setPrevious(Process new_previous) {
-				self.previous = new_previous;
-			}
-	};
-	//create the queue
-	class queue {
-		public:
-			node head = NULL;
-			node tail = NULL;
-			
-			Process pop(void) {
-				if(head == NULL) {
-					return NULL;
-				}
-				node curr_head = head;
-				head = curr_head.getPrevious();
-				return curr_head;
-			}
-			
-			void push(Process new_process) {
-				if(head == tail == NULL) {
-					head = tail = new_process;
-				} else {
-					tail.setPrevious(new_process);
-					tail = new_process;
-				}
-			}
-	};
-*/
-
-
 	//Prepare for clock ticks
 	int num_scheduled = 0;
 	int wait_times[counter];
 	int turn_times[counter];
 	//initialize priority queue
+	vector<queue<Process>> priority_queues;
+	for (int i = 0; i < 100; i++) {
+		priority_queues.push_back(queue<Process>());
+	}
 
-	//AAAAR queue *priority_queue[100]; //create a pointer to a list of 100 queues
-
+	cout << "Size of priority queue vector:" << priority_queues.size() << "\n";
+	
 	//Clock tick main loop
 	int tick = 0;
-	int tick_limit = 100000000;
+	int tick_limit = 100000;
 	int current_index = 0;
 	for (tick = 0; tick < tick_limit; tick++) {
+
+		//Queue for any process which needs an update in the current cycle (arrival, promotion, demotion)
+		queue<Process> updates;
+
 		bool event = false;
 		//Store new processes for the priority queue
 		//check for arrivals
@@ -234,20 +210,34 @@ int main (int argc, char *argv[]) {
 			cout << "arrival:" << processes[current_index].arrival << "\n";
 			current_index++;
 			event = true;
+
+			//add the item to the correct queue
+			updates.push(processes[current_index]);
 		}
 
 		//store demoted processes
 		//handle aging interval
 		//handle promotion if aging interval has passed
+
+		//handle all of the updates
+		//use the queue<Process> updates, make sure that two processes with the same resulting priority are compared not just one after another
+		//every element in updates is either promoted, demoted, or otherwise needs to be fixed
+		// we might need to use a list instead of a queue, since the aging interval needs to impact every process
+		// to push to priority queue:			priority_queues[ PRIORITY_VALUE_TO_PUSH_TO ].push( PROCESS_TO_PUSH );
+		
 		if (event) {
-			cout << "     .\n     .\n     .\n     .\n";
+			cout << "     :\n     :\n";
 		}
+		
+		//if (priority queue is empty) {//done!
+		//	break;
+		//}
 	}
 
 	//Calculate statistics
 	int avg_wait_time = 0;
 	int avg_turn_time = 0;
-	for (int i = 0; i < counter; i++) {
+	for (int i = 0; i < current_index; i++) {
 		avg_wait_time += wait_times[i];
 		avg_turn_time += turn_times[i];
 	}
@@ -259,10 +249,4 @@ int main (int argc, char *argv[]) {
 	cout << "Average waiting time: " << avg_wait_time << '\n';
 	cout << "Average turnaround time: " << avg_turn_time << '\n';
 }
-
-
-
-
-
-
 
