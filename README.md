@@ -9,6 +9,9 @@ Nothing, just needs to be finished. Current program compiles with g++ -o program
 
 Tasks:
 Finish the clock cycle loop
+  Idea for this:
+    use a class for 'current process', which includes the time to burst. Otherwise, add time to age and time to burst to 'Process' class
+
   In each loop:
     run a task (decrease ticks left for process)
       remove from queue if done
