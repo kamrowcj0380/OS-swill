@@ -1,3 +1,11 @@
+/*
+ * Swill is a simulated windows scheduler.
+ *
+ * IMPORTANT NOTES:
+ *		A process with pid == -1 is an empty process, or doesn't exist. If the pid is -1, there isn't any process there.
+ *
+ */
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -164,12 +172,14 @@ int main (int argc, char *argv[]) {
 			processes[counter] = newProcess;
 			counter++;
 
-			//cout << ' ' << pid << ' ' << burst << ' ' << arrival << ' ' << priority << ' ' << ageindex << '\n';			
+			cout << ' ' << pid << ' ' << burst << ' ' << arrival << ' ' << priority << ' ' << ageindex << '\n';			
 		} else {
 			//cout << "Process " << pid << " contained impossible values.\n";
 		}
 		
 	}
+	
+	printf("Number of processes to run: %d\n", counter);
 	
 	//utilize quicksort on the final array of processes to get a sorted array
 	quickSort(processes, 0, counter - 1);
@@ -197,22 +207,26 @@ int main (int argc, char *argv[]) {
 	int tick = 0;
 	int tick_limit = 100000;
 	int current_index = 0;
+	
+	Process current_process(-1);
+	
 	for (tick = 0; tick < tick_limit; tick++) {
 
 		//Queue for any process which needs an update in the current cycle (arrival, promotion, demotion)
-		queue<Process> updates;
+		//Try this later? ->     queue<Process> updates;
+			//add the item to the correct queue
+			//updates.push(processes[current_index]);
 
 		bool event = false;
 		//Store new processes for the priority queue
 		//check for arrivals
 		while (tick == processes[current_index].arrival) {
-			cout << "pid:" << processes[current_index].pid << "\n";
-			cout << "arrival:" << processes[current_index].arrival << "\n";
-			current_index++;
-			event = true;
+			//cout << "pid:" << processes[current_index].pid << "\n";
+			//cout << "arrival:" << processes[current_index].arrival << "\n";
 
-			//add the item to the correct queue
-			updates.push(processes[current_index]);
+			priority_queues[processes[current_index].priority].push(processes[current_index]);
+			current_index++;
+			//event = true;
 		}
 
 		//store demoted processes
@@ -224,6 +238,28 @@ int main (int argc, char *argv[]) {
 		//every element in updates is either promoted, demoted, or otherwise needs to be fixed
 		// we might need to use a list instead of a queue, since the aging interval needs to impact every process
 		// to push to priority queue:			priority_queues[ PRIORITY_VALUE_TO_PUSH_TO ].push( PROCESS_TO_PUSH );
+		
+		//This is a half solution, more needs to be added. This ignores demotion times, just literally runs top to bottom until done.
+		if (current_process.pid > -1) {//pid -1 is known as 'empty', so make sure the current process exists
+			current_process.burst -= 1;
+			if (current_process.burst == 0) {
+				current_process.pid = -1;
+			}
+		} else {
+			// a new process needs to be called
+			for (int i = 0; i < 100; i++) {
+				if (priority_queues[i].empty() == false) {
+					current_process = priority_queues[i].front();
+					priority_queues[i].pop();
+					
+					printf("New current process id: %d\n", current_process.pid);
+					cout << ' ' << current_process.pid << ' ' << current_process.burst << ' ' << current_process.arrival << ' ' << current_process.priority << ' ' << current_process.ageindex << '\n';
+					
+					event = true;
+					break;
+				}
+			}
+		}
 		
 		if (event) {
 			cout << "     :\n     :\n";
@@ -245,7 +281,7 @@ int main (int argc, char *argv[]) {
 	avg_turn_time = avg_turn_time / current_index+1;
 	
 	cout << '\n';
-	cout << "Number of processes scheduled: " << current_index+1 << '\n';
+	cout << "Number of processes scheduled: " << current_index << '\n';
 	cout << "Average waiting time: " << avg_wait_time << '\n';
 	cout << "Average turnaround time: " << avg_turn_time << '\n';
 }
