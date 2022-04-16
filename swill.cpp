@@ -11,6 +11,8 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <algorithm>
+#include <deque>
 #include <queue>
 using namespace std;
 
@@ -25,6 +27,16 @@ class Process {
 		int arrival;
 		int priority;
 		int ageindex;
+		
+		int tick_in = 0;
+		int age = 0;
+
+		//comparison function - this to be used with C++ sorting library found in -> #include <algorithm>
+		bool operator < (const Process& p) const {
+			return (arrival < p.arrival);
+		}
+
+		//constructors
 		Process() {
 			pid = 0;
 			burst = 0;
@@ -45,67 +57,11 @@ class Process {
 			arrival = arrival_time;
 			priority = priority_num;
 			ageindex = age_index;
+			tick_in -= burst;
 		}
-	
+			
 };
 
-
-/*
- * Helper QuickSort function
- */
-int makeSplit(Process arr[], int start, int end) {
-
-	int pivot = arr[start].arrival;
-
-	int count = 0;
-	for (int i = start + 1; i <= end; i++) {
-		if (arr[i].arrival <= pivot)
-			count++;
-	}
-
-	// Giving pivot element its correct position
-	int pivotIndex = start + count;
-	swap(arr[pivotIndex], arr[start]);
-
-	// Sorting left and right parts of the pivot element
-	int i = start, j = end;
-
-	while (i < pivotIndex && j > pivotIndex) {
-
-		while (arr[i].arrival <= pivot) {
-			i++;
-		}
-
-		while (arr[j].arrival > pivot) {
-			j--;
-		}
-
-		if (i < pivotIndex && j > pivotIndex) {
-			swap(arr[i++], arr[j--]);
-		}
-	}
-
-	return pivotIndex;
-}
-
-/*
- * Main QuickSort function
- */
-void quickSort(Process arr[], int start, int end) {
-
-	// base case
-	if (start >= end)
-		return;
-
-	// split the array to left and right
-	int pivot = makeSplit(arr, start, end);
-
-	// quicksort left
-	quickSort(arr, start, pivot-1);
-
-	// quicksort right
-	quickSort(arr, pivot+1, end);
-}
 
 /*
  * Main function
@@ -138,24 +94,34 @@ int main (int argc, char *argv[]) {
     ifstream open_countlines(path);
     string line;
 
-    while (getline(open_countlines, line))
-        ++number_of_lines;
+    while (getline(open_countlines, line)) {
+		int pid, burst, arrival, priority, ageindex;
+		istringstream iss(line);
+		
+		iss >> pid >> burst >> arrival >> priority >> ageindex;
+		if (pid > -1 && burst > -1 && arrival > -1 && priority > -1 && ageindex > -1) {
+			++number_of_lines;
+		}
+	}
     cout << "Number of processes: " << number_of_lines << "\n";
 
 	//save all of the processes to an array the same length as the number of lines
-	Process processes[number_of_lines];
+	//Process *processes;
+    //processes = malloc(number_of_lines * sizeof(Process));
+	
+	vector<Process> processes(number_of_lines);
 	
 	cout << "Path: " << path << '\n';
 	ifstream infile(path);
 	int first = 1;
-	int counter = 0;
+	int num_processes = 0;
 	while (getline(infile, line)) {
 		
 		if (first == 1) {
 			first = 0;
 			continue;
 		}
-		std::istringstream iss(line);
+		istringstream iss(line);
 
 		int pid;
 		int burst;
@@ -169,23 +135,32 @@ int main (int argc, char *argv[]) {
 			//This should instead add the processes to the priority queue! This is for early implementation only AAAAA
 			Process newProcess(pid, burst, arrival, priority, ageindex);
 						
-			processes[counter] = newProcess;
-			counter++;
+			processes[num_processes] = newProcess;
+			num_processes++;
 
-			cout << ' ' << pid << ' ' << burst << ' ' << arrival << ' ' << priority << ' ' << ageindex << '\n';			
+			//cout << ' ' << pid << ' ' << burst << ' ' << arrival << ' ' << priority << ' ' << ageindex << '\n';			
 		} else {
 			//cout << "Process " << pid << " contained impossible values.\n";
 		}
 		
 	}
 	
-	printf("Number of processes to run: %d\n", counter);
+	printf("Number of processes to run: %d\n", num_processes);
 	
-	//utilize quicksort on the final array of processes to get a sorted array
-	quickSort(processes, 0, counter - 1);
+	//utilize a sort on the final array of processes to get a sorted array
+	sort(processes.begin(), processes.end());
+	
+	queue<Process> sorted_process_queue;
+	
+	for (int i = 0; i < num_processes; i++) {
+		sorted_process_queue.push(processes[i]);
+	}
+	
+	//delete &processes;
 
+	
 /* testing loop for the processes, to see after they are sorted
-	for (int i = 0; i < counter; i++) {
+	for (int i = 0; i < num_processes; i++) {
 		cout << "pid:" << processes[i].pid << "\n";
 		cout << "arrival:" << processes[i].arrival << "\n\n";
 	}
@@ -193,92 +168,168 @@ int main (int argc, char *argv[]) {
 
 	//Prepare for clock ticks
 	int num_scheduled = 0;
-	int wait_times[counter];
-	int turn_times[counter];
+	int total_wait_time = 0;
+	int total_turn_time = 0;
 	//initialize priority queue
-	vector<queue<Process>> priority_queues;
+	vector<deque<Process>> priority_queues;
 	for (int i = 0; i < 100; i++) {
-		priority_queues.push_back(queue<Process>());
+		priority_queues.push_back(deque<Process>());
 	}
 
 	cout << "Size of priority queue vector:" << priority_queues.size() << "\n";
 	
 	//Clock tick main loop
 	int tick = 0;
-	int tick_limit = 100000;
+	double tick_limit = 10000000000000;
 	int current_index = 0;
+	int aging = 0;
+	int timer = 0; //for time quantum
 	
 	Process current_process(-1);
 	
 	for (tick = 0; tick < tick_limit; tick++) {
 
-		//Queue for any process which needs an update in the current cycle (arrival, promotion, demotion)
-		//Try this later? ->     queue<Process> updates;
-			//add the item to the correct queue
-			//updates.push(processes[current_index]);
-
 		bool event = false;
+		bool OOT = false;
 		//Store new processes for the priority queue
 		//check for arrivals
-		while (tick == processes[current_index].arrival) {
+		while (tick == sorted_process_queue.front().arrival) {
 			//cout << "pid:" << processes[current_index].pid << "\n";
 			//cout << "arrival:" << processes[current_index].arrival << "\n";
 
-			priority_queues[processes[current_index].priority].push(processes[current_index]);
+			priority_queues[sorted_process_queue.front().priority].push_back(sorted_process_queue.front());
+			sorted_process_queue.pop();
 			current_index++;
 			//event = true;
 		}
-
-		//store demoted processes
-		//handle aging interval
-		//handle promotion if aging interval has passed
 
 		//handle all of the updates
 		//use the queue<Process> updates, make sure that two processes with the same resulting priority are compared not just one after another
 		//every element in updates is either promoted, demoted, or otherwise needs to be fixed
 		// we might need to use a list instead of a queue, since the aging interval needs to impact every process
-		// to push to priority queue:			priority_queues[ PRIORITY_VALUE_TO_PUSH_TO ].push( PROCESS_TO_PUSH );
+		// to push to priority queue:			priority_queues[ PRIORITY_VALUE_TO_PUSH_TO ].push_back( PROCESS_TO_PUSH );
 		
 		//This is a half solution, more needs to be added. This ignores demotion times, just literally runs top to bottom until done.
 		if (current_process.pid > -1) {//pid -1 is known as 'empty', so make sure the current process exists
 			current_process.burst -= 1;
 			if (current_process.burst == 0) {
+				cout << "Process " << current_process.pid << " has finished running.\n"; 
+				
+				total_wait_time += tick - current_process.tick_in;
+				//cout << "Tick time:" << tick - current_process.tick_in <<'\n';
+				event = true;
 				current_process.pid = -1;
 			}
-		} else {
+		}
+		
+		//seems redundant, but handles the logic of the previous if the process finished running
+		if (current_process.pid == -1) {
 			// a new process needs to be called
 			for (int i = 0; i < 100; i++) {
 				if (priority_queues[i].empty() == false) {
+					current_process = priority_queues[i][0];
+					priority_queues[i].pop_front();
+					
+					printf("The new current process id: %d\n", current_process.pid);
+					cout << ' ' << current_process.pid << ' ' << current_process.burst << ' ' << current_process.arrival << ' ' << current_process.priority << ' ' << current_process.ageindex << '\n';
+
+					current_process.tick_in = tick;
+					//reset timer
+					timer = 0;
+					event = true;
+					break;
+				}
+			}
+			if (current_process.pid == -1 && current_index == num_processes) {//done!
+				break;
+			}
+		}
+		
+		//handle demoted processes
+		if (timer++ >= time_quantum && current_process.pid != -1) {
+			timer = 0;
+			//demote current process
+			if (current_process.priority > 0) {
+				current_process.priority = current_process.priority - 1;
+			}
+			priority_queues[current_process.priority].push_back(current_process);
+			
+			cout << "Time Quantum expired for process ID " << current_process.pid << '\n';
+			//get new process
+			for (int i = 0; i < 100; i++) {
+				if (priority_queues[i].empty() == false) {
 					current_process = priority_queues[i].front();
-					priority_queues[i].pop();
+					priority_queues[i].pop_front();
 					
 					printf("New current process id: %d\n", current_process.pid);
 					cout << ' ' << current_process.pid << ' ' << current_process.burst << ' ' << current_process.arrival << ' ' << current_process.priority << ' ' << current_process.ageindex << '\n';
 					
+					current_process.tick_in = tick;
+					//TIMER IS ALREADY RESET...
 					event = true;
 					break;
 				}
 			}
 		}
+
+		/*
+		 * Tick Math section
+		 * anything that changes each tick for a process - time since loaded, age, etc. is updated here
+		 */
+
+		//handle aging interval
+		//handle promotion if aging interval has passed
+		for (int i = 0; i < 100; i++) {
+			if (priority_queues[i].empty() == false) {
+				for (int cur_q; cur_q < priority_queues[i].size(); cur_q++) {
+					priority_queues[i][cur_q].age += 1;
+					if (priority_queues[i][cur_q].age >= aging_interval) {
+						priority_queues[i][cur_q].age = 0;
+						if (priority_queues[i][cur_q].priority < 99) {
+							current_process.priority = current_process.priority + 1;
+							//implement aging
+							
+						} //if false,
+						//can't get any higher...
+					}
+
+					
+
+					priority_queues[current_process.priority].push_back(current_process);
+					current_process = priority_queues[i].front();
+					priority_queues[i].pop_front();
+					
+					printf("New current process id: %d\n", current_process.pid);
+					cout << ' ' << current_process.pid << ' ' << current_process.burst << ' ' << current_process.arrival << ' ' << current_process.priority << ' ' << current_process.ageindex << '\n';
+					
+					current_process.tick_in = tick;
+
+				}
+			}
+		}
+
+
+		if (aging++ >= aging_interval) {
+			aging = 0;
+			//promote processes that got older
+			//here
+		}
 		
+		//end of Tick Math section
+
 		if (event) {
 			cout << "     :\n     :\n";
 		}
 		
-		//if (priority queue is empty) {//done!
-		//	break;
-		//}
+		//cout << tick << "\n";
+		
 	}
+	
+	cout << "Done! Finished on tick: " << tick << '\n';
 
 	//Calculate statistics
-	int avg_wait_time = 0;
-	int avg_turn_time = 0;
-	for (int i = 0; i < current_index; i++) {
-		avg_wait_time += wait_times[i];
-		avg_turn_time += turn_times[i];
-	}
-	avg_wait_time = avg_wait_time / current_index+1;
-	avg_turn_time = avg_turn_time / current_index+1;
+	float avg_wait_time = total_wait_time*1.0 / (current_index);
+	float avg_turn_time = total_turn_time*1.0 / (current_index);
 	
 	cout << '\n';
 	cout << "Number of processes scheduled: " << current_index << '\n';
