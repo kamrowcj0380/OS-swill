@@ -194,8 +194,8 @@ int main (int argc, char *argv[]) {
 		//Store new processes for the priority queue
 		//check for arrivals
 		while (tick == sorted_process_queue.front().arrival) {
-			//cout << "pid:" << processes[current_index].pid << "\n";
-			//cout << "arrival:" << processes[current_index].arrival << "\n";
+			cout << "pid:" << processes[current_index].pid << "\n";
+			cout << "arrival:" << processes[current_index].arrival << "\n";
 
 			priority_queues[sorted_process_queue.front().priority].push_back(sorted_process_queue.front());
 			sorted_process_queue.pop();
@@ -225,7 +225,7 @@ int main (int argc, char *argv[]) {
 		//seems redundant, but handles the logic of the previous if the process finished running
 		if (current_process.pid == -1) {
 			// a new process needs to be called
-			for (int i = 0; i < 100; i++) {
+			for (int i = 99; i > -1; i--) {
 				if (priority_queues[i].empty() == false) {
 					current_process = priority_queues[i][0];
 					priority_queues[i].pop_front();
@@ -256,7 +256,7 @@ int main (int argc, char *argv[]) {
 			
 			cout << "Time Quantum expired for process ID " << current_process.pid << '\n';
 			//get new process
-			for (int i = 0; i < 100; i++) {
+			for (int i = 99; i > -1; i--) {
 				if (priority_queues[i].empty() == false) {
 					current_process = priority_queues[i].front();
 					priority_queues[i].pop_front();
