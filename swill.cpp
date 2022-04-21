@@ -62,7 +62,6 @@ class Process {
 			
 };
 
-
 /*
  * Main function
  */
@@ -106,9 +105,6 @@ int main (int argc, char *argv[]) {
     //cout << "Number of processes: " << number_of_lines << "\n";
 
 	//save all of the processes to an array the same length as the number of lines
-	//Process *processes;
-    //processes = malloc(number_of_lines * sizeof(Process));
-	
 	vector<Process> processes(number_of_lines);
 	
 	//cout << "Path: " << path << '\n';
@@ -152,19 +148,23 @@ int main (int argc, char *argv[]) {
 	
 	queue<Process> sorted_process_queue;
 	
+	int prev_arrival = processes[0].arrival;
 	for (int i = 0; i < num_processes; i++) {
+		if (prev_arrival > processes[i].arrival) {
+			cout << "There was an error in the C++ sorting library.\n\n";
+			num_processes--;
+			continue;
+			//exit(0);
+		}
 		sorted_process_queue.push(processes[i]);
+		prev_arrival = processes[i].arrival;
 	}
-	
-	//delete &processes;
 
-	
-/* testing loop for the processes, to see after they are sorted
+    /* testing loop for the processes, to see after they are sorted
 	for (int i = 0; i < num_processes; i++) {
 		cout << "pid:" << processes[i].pid << "\n";
 		cout << "arrival:" << processes[i].arrival << "\n\n";
-	}
-*/
+	}*/
 
 	//Prepare for clock ticks
 	double num_scheduled = 0;
@@ -194,6 +194,11 @@ int main (int argc, char *argv[]) {
 		//Store new processes for the priority queue
 		//check for arrivals
 		while (tick == sorted_process_queue.front().arrival) {
+			if (event == false) {
+				cout << "Clock tick: " << tick << '\n';
+			}
+			cout << " pid: " << processes[current_index].pid << " arrives\n";
+			
 			//cout << "pid:" << processes[current_index].pid << "\n";
 			//cout << "arrival:" << processes[current_index].arrival << "\n";
 			sorted_process_queue.front().tick_in = tick;
@@ -201,7 +206,7 @@ int main (int argc, char *argv[]) {
 			priority_queues[sorted_process_queue.front().priority].push_back(sorted_process_queue.front());
 			sorted_process_queue.pop();
 			current_index++;
-			//event = true;
+			event = true;
 		}
 
 		//handle all of the updates
@@ -214,7 +219,9 @@ int main (int argc, char *argv[]) {
 		if (current_process.pid > -1) {//pid -1 is known as 'empty', so make sure the current process exists
 			current_process.burst -= 1;
 			if (current_process.burst == 0) {
-				cout << "Clock tick: " << tick << '\n';
+				if (event == false) {
+					cout << "Clock tick: " << tick << '\n';
+				}
 				cout << " Pid: " << current_process.pid << " terminates\n"; 
 				
 				//cout << " EEEEE: " << tick - current_process.wait_time << " wait time! \n"; 
@@ -250,7 +257,7 @@ int main (int argc, char *argv[]) {
 					break;
 				}
 			}
-			if (current_process.pid == -1 && current_index == num_processes) {//done!
+			if (current_process.pid == -1 && current_index >= num_processes) {//done!
 				cout << "     :\n     :\n";
 				break;
 			}
@@ -335,7 +342,7 @@ int main (int argc, char *argv[]) {
 		//cout << tick << "\n";
 		
 	}
-	
+		
 	//Calculate statistics
 	float avg_wait_time = total_wait_time*1.0 / (current_index);
 	float avg_turn_time = total_turn_time*1.0 / (current_index);
@@ -343,6 +350,8 @@ int main (int argc, char *argv[]) {
 	cout << '\n';
 	cout << "Number of processes scheduled: " << current_index << '\n';
 	cout << "Average waiting time: " << avg_wait_time << '\n';
-	cout << "Average turnaround time: " << avg_turn_time << '\n';
+	cout << "Average turnaround time: " << avg_turn_time << "\n\n";
+	
+	exit(0);
 }
 
